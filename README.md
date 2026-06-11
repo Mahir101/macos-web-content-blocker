@@ -50,7 +50,7 @@ executables on top of it.
 ### Folder structure
 
 ```
-macos-porn-blocker/
+macos-web-content-blocker/
 ├── Package.swift
 ├── README.md
 ├── Sources/
@@ -170,7 +170,7 @@ score, action taken. **Never** screenshots, page content, or keystrokes.
 Requirements: macOS 14+, Swift 6 toolchain (Xcode 16+).
 
 ```bash
-cd macos-porn-blocker
+cd macos-web-content-blocker
 
 # Build only
 swift build -c release
