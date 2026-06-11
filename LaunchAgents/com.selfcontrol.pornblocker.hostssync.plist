@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Root LaunchDaemon that mirrors the app's blocked-domains export into
+  /etc/hosts (network-level blocking that survives VPNs and browser
+  choice). Installed to /Library/LaunchDaemons/ by install.sh and runs
+  as root. It watches the export file and re-syncs whenever it changes,
+  and also re-syncs every 5 minutes as a safety net.
+
+  __SCRIPT_PATH__ and __EXPORT_PATH__ are rewritten at install time.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.selfcontrol.pornblocker.hostssync</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__SCRIPT_PATH__</string>
+        <string>__EXPORT_PATH__</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>WatchPaths</key>
+    <array>
+        <string>__EXPORT_PATH__</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <key>StandardErrorPath</key>
+    <string>/var/log/pornblocker-hostssync.log</string>
+</dict>
+</plist>

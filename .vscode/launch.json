@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:macos-porn-blocker}",
+            "name": "Debug blockerd",
+            "target": "blockerd",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug blockerd"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:macos-porn-blocker}",
+            "name": "Release blockerd",
+            "target": "blockerd",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release blockerd"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:macos-porn-blocker}",
+            "name": "Debug BlockerApp",
+            "target": "BlockerApp",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug BlockerApp"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:macos-porn-blocker}",
+            "name": "Release BlockerApp",
+            "target": "BlockerApp",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release BlockerApp"
+        }
+    ]
+}
