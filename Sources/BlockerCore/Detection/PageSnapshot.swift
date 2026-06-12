@@ -36,6 +36,13 @@ public struct PageSnapshot: Sendable {
         urlString.flatMap(DomainMatcher.host(from:))
     }
 
+    /// Chrome's extension manager lists extension names that can
+    /// legitimately contain blocked keywords (e.g. a porn-blocker
+    /// extension), so this one internal page is exempt from scoring.
+    public var isChromeExtensionsPage: Bool {
+        urlString?.lowercased().hasPrefix("chrome://extensions") == true
+    }
+
     /// Combined text used for keyword scanning. Title and URL are
     /// included so title-only detections work when the AX tree is
     /// unreadable (e.g. Firefox with accessibility partially disabled).

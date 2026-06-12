@@ -58,6 +58,9 @@ public struct DetectionEngine: Sendable {
     }
 
     public func evaluate(_ snapshot: PageSnapshot) -> DetectionResult {
+        if snapshot.isChromeExtensionsPage {
+            return DetectionResult(score: 0, signals: [], matchedDomain: nil, shouldBlock: false)
+        }
         if let host = snapshot.host, whitelist.contains(host: host) {
             return DetectionResult(score: 0, signals: [], matchedDomain: nil, shouldBlock: false)
         }

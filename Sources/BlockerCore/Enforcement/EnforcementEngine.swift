@@ -3,32 +3,19 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 
-/// Escalating enforcement:
+/// Tab-only enforcement: when a page is blocked, close the active tab
+/// (Cmd+W posted to the browser pid) — and nothing more. The browser
+/// window and process are never touched. If the browser has no focused
+/// window, enforcement is skipped entirely.
 ///
-///   step 0  close the active tab (Cmd+W posted to the browser pid)
-///   step 1  close the focused window (AX close button, then Cmd+Shift+W)
-///   step 2  terminate the browser process (graceful, then force)
-///
-/// The monitor rescans after each step; if the same browser still shows
-/// blocked content within the escalation window, the next detection
-/// runs the next step. Every enforcement also adds the domain to the
-/// runtime blocklist and starts the cooldown timer.
+/// Every enforcement also adds the domain to the runtime blocklist and
+/// records an event.
 @MainActor
 public final class EnforcementEngine {
     public enum Action: String, Sendable {
         case closedTab = "closed-tab"
-        case closedWindow = "closed-window"
-        case terminatedBrowser = "terminated-browser"
+        case skipped = "skipped"
     }
-
-    private struct Escalation {
-        var step: Int
-        var lastDetection: Date
-    }
-
-    /// Detections in the same browser within this window escalate.
-    private let escalationWindow: TimeInterval = 12
-    private var escalations: [pid_t: Escalation] = [:]
 
     private let blocklist: BlocklistStore
     private let logger: EventLogger
@@ -50,8 +37,8 @@ public final class EnforcementEngine {
         self.audio = audio
     }
 
-    /// Runs one escalation step and records the event. Returns the
-    /// action taken.
+    /// Closes the active tab and records the event. Returns the action
+    /// taken. Does nothing when the browser has no focused window.
     @discardableResult
     public func enforce(
         detection: DetectionResult,
@@ -61,34 +48,11 @@ public final class EnforcementEngine {
         let now = Date()
         let config = configStore.load()
 
-        var step = 0
-        if let existing = escalations[pid],
-           now.timeIntervalSince(existing.lastDetection) < escalationWindow {
-            step = existing.step + 1
-        }
-        // During cooldown a re-detection of the same domain skips
-        // straight to killing the browser.
-        let state = stateStore.load()
-        if state.inCooldown,
-           let domain = detection.matchedDomain,
-           domain == state.lastDetectionDomain {
-            step = max(step, 2)
-        }
-        escalations[pid] = Escalation(step: step, lastDetection: now)
+        let app = AXUIElementCreateApplication(pid)
+        guard AX.focusedWindow(of: app) != nil else { return .skipped }
 
-        let action: Action
-        switch step {
-        case 0:
-            closeActiveTab(pid: pid)
-            action = .closedTab
-        case 1:
-            closeFocusedWindow(pid: pid)
-            action = .closedWindow
-        default:
-            terminateBrowser(pid: pid)
-            action = .terminatedBrowser
-            escalations[pid] = nil
-        }
+        closeActiveTab(pid: pid)
+        let action: Action = .closedTab
 
         audio.play()
 
@@ -113,37 +77,10 @@ public final class EnforcementEngine {
         return action
     }
 
-    public func resetEscalation(pid: pid_t) {
-        escalations[pid] = nil
-    }
-
     // MARK: - Actions
 
     private func closeActiveTab(pid: pid_t) {
         postKeystroke(pid: pid, keyCode: 13 /* W */, flags: .maskCommand)
-    }
-
-    private func closeFocusedWindow(pid: pid_t) {
-        let app = AXUIElementCreateApplication(pid)
-        if let window = AX.focusedWindow(of: app),
-           let closeButton = AX.element(window, kAXCloseButtonAttribute),
-           AX.press(closeButton) {
-            return
-        }
-        postKeystroke(pid: pid, keyCode: 13 /* W */, flags: [.maskCommand, .maskShift])
-    }
-
-    private func terminateBrowser(pid: pid_t) {
-        guard let app = NSRunningApplication(processIdentifier: pid) else { return }
-        if !app.terminate() {
-            app.forceTerminate()
-        }
-        // Belt and braces: if it is still alive shortly after, force it.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            if let app = NSRunningApplication(processIdentifier: pid), !app.isTerminated {
-                app.forceTerminate()
-            }
-        }
     }
 
     private func postKeystroke(pid: pid_t, keyCode: CGKeyCode, flags: CGEventFlags) {

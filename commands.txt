@@ -1,1 +1,1 @@
- cd /Users/mdmahirlabib/Desktop/business-clarity/macos-porn-blocker && ./Scripts/install.sh
+ cd /Users/mdmahirlabib/Desktop/macos-porn-blocker && ./Scripts/install.sh

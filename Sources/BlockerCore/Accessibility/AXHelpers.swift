@@ -74,7 +74,16 @@ enum WebContentReader {
         var content = Content()
         content.url = pageURL(window: window)
 
-        var queue: [(AXUIElement, Int)] = [(window, 0)]
+        // Score only what the page itself shows: text outside the
+        // AXWebArea belongs to browser UI (toolbars, the extensions
+        // dropdown, bookmark names, omnibox suggestions) and must not
+        // trigger detection. Without a web area (browser-internal
+        // pages), detection falls back to title/URL-only scoring.
+        guard let webArea = findFirst(role: "AXWebArea", under: window, maxNodes: 400) else {
+            return content
+        }
+
+        var queue: [(AXUIElement, Int)] = [(webArea, 0)]
         var visited = 0
 
         while !queue.isEmpty, visited < maxNodes {
@@ -118,6 +127,24 @@ enum WebContentReader {
                 if let url = raw as? URL { return url.absoluteString }
                 if let str = raw as? String { return str }
             }
+        }
+        // Chrome's internal pages expose no AXDocument or AXURL, but the
+        // omnibox shows their full URL with scheme. Only the extension
+        // manager is recognised this way — anything else from the address
+        // bar is ignored so real pages behave exactly as before. The page
+        // can contain its own text fields (e.g. a search box), so every
+        // field is checked, not just the first.
+        var queue: [AXUIElement] = [window]
+        var visited = 0
+        while !queue.isEmpty, visited < 300 {
+            let node = queue.removeFirst()
+            visited += 1
+            if AX.role(node) == "AXTextField",
+               let value = AX.string(node, kAXValueAttribute),
+               value.lowercased().hasPrefix("chrome://extensions") {
+                return value
+            }
+            queue.append(contentsOf: AX.children(node))
         }
         return nil
     }

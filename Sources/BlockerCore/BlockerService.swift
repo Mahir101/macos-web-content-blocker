@@ -59,12 +59,7 @@ public final class BlockerService {
         let engine = makeEngine()
         let result = engine.evaluate(observation.snapshot)
 
-        guard result.shouldBlock else {
-            // Page is clean: clear any pending escalation for this pid so
-            // a later unrelated hit starts fresh at "close tab".
-            enforcement.resetEscalation(pid: observation.pid)
-            return
-        }
+        guard result.shouldBlock else { return }
 
         let action = enforcement.enforce(
             detection: result,
@@ -72,9 +67,9 @@ public final class BlockerService {
             pid: observation.pid
         )
 
-        // Re-scan shortly after a tab/window close to catch the page
-        // underneath (and escalate if it is also blocked).
-        if action != .terminatedBrowser {
+        // Re-scan shortly after a tab close to catch the page underneath
+        // (it gets its own tab-close if it is also blocked).
+        if action == .closedTab {
             let pid = observation.pid
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
                 self?.monitor.scanNow(pid: pid)
